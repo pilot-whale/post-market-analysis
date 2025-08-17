@@ -7,9 +7,9 @@ import random
 
 def add_text_from_txt_to_image(image_path, txt_path, output_path, 
                               font_path="simhei.ttf",
-                              font_size=67,  # 放大到原来的3倍 (24*3)
+                              font_size=97,  # 放大到原来的3倍 (24*3)
                               text_color=(255, 215, 0),  # 改为黄色
-                              bg_color=(0, 0, 113),  # 深蓝背景
+                              bg_color=(100, 149, 237),  # 半透明蓝色背景 (R, G, B, Alpha)
                               line_spacing=30,  # 行间距也相应放大3倍 (30*3)
                               start_x=50,
                               start_y=150,  # 增加上边距给更大的日期
@@ -24,7 +24,7 @@ def add_text_from_txt_to_image(image_path, txt_path, output_path,
         font_path: 中文字体路径
         font_size: 字体大小
         text_color: 文字颜色
-        bg_color: 背景颜色
+        bg_color: 背景颜色 (包含alpha通道，0-255，0表示完全透明，255表示完全不透明)
         line_spacing: 行间距
         start_x: 起始x坐标
         start_y: 起始y坐标
@@ -35,7 +35,8 @@ def add_text_from_txt_to_image(image_path, txt_path, output_path,
     if image is None:
         raise ValueError("无法加载图片，请检查路径是否正确")
     
-    image_pil = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+    # 转换为RGB，然后再转换为RGBA以支持透明度
+    image_pil = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB)).convert('RGBA')
     draw = ImageDraw.Draw(image_pil)
     
     # 添加当前年月日（黄底黑字）
@@ -50,8 +51,8 @@ def add_text_from_txt_to_image(image_path, txt_path, output_path,
     date_width = date_bbox[2] - date_bbox[0] + 30  # 增加30像素的边距
     date_height = date_bbox[3] - date_bbox[1] + 30  # 增加30像素的边距
     
-    # 绘制黄色背景
-    draw.rounded_rectangle([(10, 10), (10 + date_width, 10 + date_height)], radius=15, fill=(255, 215, 0))
+    # 绘制黄色背景 (日期背景保持不透明)
+    draw.rounded_rectangle([(10, 10), (10 + date_width, 10 + date_height)], radius=15, fill=(255, 215, 0, 255))
     
     # 绘制黑色日期文字
     draw.text((20, 15), current_date, font=date_font, fill=(0, 0, 0))
@@ -99,10 +100,10 @@ def add_text_from_txt_to_image(image_path, txt_path, output_path,
                 if current_line:
                     line_text = ''.join(current_line)
                     line_bbox = draw.textbbox((x, y), line_text, font=font)
-                    line_width = line_bbox[2] - line_bbox[0] + 20  # 增加20像素边距
-                    line_height = line_bbox[3] - line_bbox[1] + 15  # 增加15像素边距
+                    line_width = line_bbox[2] - line_bbox[0] + 30  # 增加30像素边距
+                    line_height = line_bbox[3] - line_bbox[1] + 30  # 增加30像素边距
                     
-                    # 绘制深蓝色背景
+                    # 绘制半透明蓝色背景
                     draw.rounded_rectangle([(x - 10, y - 10), (x + line_width - 10, y + line_height - 10)], radius=10, fill=bg_color)
                     
                     # 绘制黄色文字
@@ -119,15 +120,15 @@ def add_text_from_txt_to_image(image_path, txt_path, output_path,
             line_width = line_bbox[2] - line_bbox[0] + 20  # 增加20像素边距
             line_height = line_bbox[3] - line_bbox[1] + 15  # 增加15像素边距
             
-            # 绘制深蓝色背景
+            # 绘制半透明蓝色背景
             draw.rounded_rectangle([(x - 10, y - 10), (x + line_width - 10, y + line_height - 10)], radius=10, fill=bg_color)
             
             # 绘制黄色文字
             draw.text((x, y), line_text, font=font, fill=text_color)
             y += line_height + line_spacing
     
-    # 保存结果
-    result_image = cv2.cvtColor(np.array(image_pil), cv2.COLOR_RGB2BGR)
+    # 保存结果 - 转换回RGB模式以兼容JPG等格式
+    result_image = cv2.cvtColor(np.array(image_pil.convert('RGB')), cv2.COLOR_RGB2BGR)
     cv2.imwrite(output_path, result_image)
     print(f"处理完成，结果已保存到: {output_path}")
 
