@@ -45,11 +45,11 @@ def add_text_from_txt_to_image(image_path, txt_path, output_path,
     
     # 计算日期文本的边界框
     date_bbox = draw.textbbox((0, 0), current_date, font=date_font)
-    date_width = date_bbox[2] - date_bbox[0] + 20  # 增加20像素的边距
-    date_height = date_bbox[3] - date_bbox[1] + 10  # 增加10像素的边距
+    date_width = date_bbox[2] - date_bbox[0] + 30  # 增加30像素的边距
+    date_height = date_bbox[3] - date_bbox[1] + 30  # 增加30像素的边距
     
     # 绘制黄色背景
-    draw.rectangle([(10, 10), (10 + date_width, 10 + date_height)], fill=(255, 215, 0))
+    draw.rounded_rectangle([(10, 10), (10 + date_width, 10 + date_height)], radius=15, fill=(255, 215, 0))
     
     # 绘制黑色日期文字
     draw.text((20, 15), current_date, font=date_font, fill=(0, 0, 0))
