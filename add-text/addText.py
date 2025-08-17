@@ -7,8 +7,9 @@ import random
 
 def add_text_from_txt_to_image(image_path, txt_path, output_path, 
                               font_path="simhei.ttf",
-                              font_size=37,  # 放大到原来的3倍 (24*3)
-                              color=(0, 0, 0),  # 改为黑色
+                              font_size=67,  # 放大到原来的3倍 (24*3)
+                              text_color=(255, 215, 0),  # 改为黄色
+                              bg_color=(0, 0, 113),  # 深蓝背景
                               line_spacing=30,  # 行间距也相应放大3倍 (30*3)
                               start_x=50,
                               start_y=150,  # 增加上边距给更大的日期
@@ -22,7 +23,8 @@ def add_text_from_txt_to_image(image_path, txt_path, output_path,
         output_path: 输出图片路径
         font_path: 中文字体路径
         font_size: 字体大小
-        color: 文字颜色
+        text_color: 文字颜色
+        bg_color: 背景颜色
         line_spacing: 行间距
         start_x: 起始x坐标
         start_y: 起始y坐标
@@ -93,20 +95,36 @@ def add_text_from_txt_to_image(image_path, txt_path, output_path,
             if text_width <= max_width:
                 current_line.append(word)
             else:
-                # 绘制当前行
+                # 绘制当前行背景和文字
                 if current_line:
-                    draw.text((x, y), ''.join(current_line), font=font, fill=color)
-                    bbox = draw.textbbox((x, y), ''.join(current_line), font=font)
-                    y += (bbox[3] - bbox[1]) + line_spacing
+                    line_text = ''.join(current_line)
+                    line_bbox = draw.textbbox((x, y), line_text, font=font)
+                    line_width = line_bbox[2] - line_bbox[0] + 20  # 增加20像素边距
+                    line_height = line_bbox[3] - line_bbox[1] + 15  # 增加15像素边距
+                    
+                    # 绘制深蓝色背景
+                    draw.rounded_rectangle([(x - 10, y - 10), (x + line_width - 10, y + line_height - 10)], radius=10, fill=bg_color)
+                    
+                    # 绘制黄色文字
+                    draw.text((x, y), line_text, font=font, fill=text_color)
+                    y += line_height + line_spacing
                 
                 # 开始新行
                 current_line = [word]
         
         # 绘制剩余的文字
         if current_line:
-            draw.text((x, y), ''.join(current_line), font=font, fill=color)
-            bbox = draw.textbbox((x, y), ''.join(current_line), font=font)
-            y += (bbox[3] - bbox[1]) + line_spacing
+            line_text = ''.join(current_line)
+            line_bbox = draw.textbbox((x, y), line_text, font=font)
+            line_width = line_bbox[2] - line_bbox[0] + 20  # 增加20像素边距
+            line_height = line_bbox[3] - line_bbox[1] + 15  # 增加15像素边距
+            
+            # 绘制深蓝色背景
+            draw.rounded_rectangle([(x - 10, y - 10), (x + line_width - 10, y + line_height - 10)], radius=10, fill=bg_color)
+            
+            # 绘制黄色文字
+            draw.text((x, y), line_text, font=font, fill=text_color)
+            y += line_height + line_spacing
     
     # 保存结果
     result_image = cv2.cvtColor(np.array(image_pil), cv2.COLOR_RGB2BGR)
