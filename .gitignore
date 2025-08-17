@@ -53,6 +53,7 @@ pytestdebug.log
 # 静态资源
 *.wav
 *.mp3
+*.mp4
 *.txt
 *.json
 *.csv
