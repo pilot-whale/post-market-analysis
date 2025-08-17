@@ -51,9 +51,11 @@ pytestdebug.log
 .ipynb_checkpoints/
 
 # 静态资源
-.wav
-.mp3
-.txt
-.json
-.csv
-.png
+*.wav
+*.mp3
+*.txt
+*.json
+*.csv
+*.png
+*.jpg
+*.jpeg
