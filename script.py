@@ -1,6 +1,11 @@
 import subprocess
 import os
+import time  # 导入time模块
 from pathlib import Path
+
+# 调用清理脚本 - 运行前
+print("运行前清理文件...")
+subprocess.run(["python", str(Path(__file__).parent / "cleanup.py")], check=True)
 
 # 激活 Conda 环境 chatTTS
 print("正在激活 Conda 环境 chatTTS...")
@@ -17,15 +22,20 @@ script_dir = Path(__file__).parent
 
 # 定义相对路径
 app_path = script_dir / "ChatTTS-UI-0.84" / "app.exe"
-asker_path = script_dir / "ChatTTS-asker" / "ChatAPI.py"
+asker_path = script_dir / "ChatTTS-asker" / "getAudioByTarget.py"
 addText_path = script_dir / "add-text" / "addText.py"
-videoGenerate_path = script_dir / "video-generator" / "video.py"
-upload_path = script_dir / "social-auto-upload" / "upload_video_to_douyin.py"
+videoGenerate_path = script_dir / "video-processor" / "video-generator.py"
+videoConnect_path = script_dir / "video-processor" / "video-connecter.py"
+# upload_path = script_dir / "social-auto-upload" / "upload_video_to_douyin.py"
 
 try:
     # 启动app.exe
     app_process = subprocess.Popen(str(app_path))
     print(f"已启动: {app_path}")
+
+    # 添加等待时间，确保app完全启动
+    print("等待app完全启动...")
+    time.sleep(60)  # 等待10秒，可以根据实际情况调整
 
     # 运行Python脚本 - 确保在 Conda 环境 chatTTS 中运行
     print(f"正在运行: {asker_path}")
@@ -34,6 +44,8 @@ try:
     subprocess.run(["conda", "run", "-n", "chatTTS", "python", str(addText_path)], check=True)
     print(f"正在运行: {videoGenerate_path}")
     subprocess.run(["conda", "run", "-n", "chatTTS", "python", str(videoGenerate_path)], check=True)
+    print(f"正在运行: {videoConnect_path}")
+    subprocess.run(["conda", "run", "-n", "chatTTS", "python", str(videoConnect_path)], check=True)
     # print(f"正在运行: {upload_path}")
     # subprocess.run(["conda", "run", "-n", "chatTTS", "python", str(upload_path)], check=True)
     
@@ -49,3 +61,7 @@ finally:
         print("app.exe已自行退出")
 
 print("所有操作完成")
+
+# 调用清理脚本 - 运行后
+print("运行后清理文件...")
+subprocess.run(["python", str(Path(__file__).parent / "cleanup.py")], check=True)
