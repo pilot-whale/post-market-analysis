@@ -2,6 +2,7 @@ import subprocess
 import os
 import time  # 导入time模块
 from pathlib import Path
+import psutil  # 导入psutil库用于更精确地关闭进程
 
 # 调用清理脚本 - 运行前
 print("运行前清理文件...")
@@ -43,14 +44,14 @@ try:
     subprocess.run(["conda", "run", "-n", "chatTTS", "python", str(email_path)], check=True)
     print(f"正在运行: {asker_path}")
     subprocess.run(["conda", "run", "-n", "chatTTS", "python", str(asker_path)], check=True)
-    print(f"正在运行: {addText_path}")
-    subprocess.run(["conda", "run", "-n", "chatTTS", "python", str(addText_path)], check=True)
-    print(f"正在运行: {videoGenerate_path}")
-    subprocess.run(["conda", "run", "-n", "chatTTS", "python", str(videoGenerate_path)], check=True)
-    print(f"正在运行: {videoConnect_path}")
-    subprocess.run(["conda", "run", "-n", "chatTTS", "python", str(videoConnect_path)], check=True)
-    print(f"正在运行: {upload_path}")
-    subprocess.run(["conda", "run", "-n", "chatTTS", "python", str(upload_path)], check=True)
+    # print(f"正在运行: {addText_path}")
+    # subprocess.run(["conda", "run", "-n", "chatTTS", "python", str(addText_path)], check=True)
+    # print(f"正在运行: {videoGenerate_path}")
+    # subprocess.run(["conda", "run", "-n", "chatTTS", "python", str(videoGenerate_path)], check=True)
+    # print(f"正在运行: {videoConnect_path}")
+    # subprocess.run(["conda", "run", "-n", "chatTTS", "python", str(videoConnect_path)], check=True)
+    # print(f"正在运行: {upload_path}")
+    # subprocess.run(["conda", "run", "-n", "chatTTS", "python", str(upload_path)], check=True)
     
     print("Python脚本执行完毕，准备关闭app.exe...")
     
@@ -62,6 +63,21 @@ finally:
         print("app.exe已关闭")
     else:
         print("app.exe已自行退出")
+    
+    # 关闭所有浏览器窗口
+    try:
+        print("正在关闭所有浏览器窗口...")
+        # 列出常见浏览器进程名
+        browsers = ['chrome.exe', 'msedge.exe', 'firefox.exe', 'opera.exe', 'brave.exe', 'vivaldi.exe']
+        
+        for browser in browsers:
+            # 使用taskkill命令强制关闭进程
+            subprocess.run(["taskkill", "/F", "/IM", browser], shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            print(f"已尝试关闭: {browser}")
+        
+        print("所有浏览器窗口关闭操作已完成")
+    except Exception as e:
+        print(f"关闭浏览器时出错: {e}")
 
 print("所有操作完成")
 
