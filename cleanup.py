@@ -1,6 +1,5 @@
 import os
 import shutil
-import sys
 from pathlib import Path
 
 def clean_directory(path):
@@ -31,7 +30,8 @@ def main():
         script_dir / "text" / "subtitle",
         script_dir / "text" / "target",
         script_dir / "video",
-        script_dir / "picture" / "textAdded"
+        script_dir / "picture" / "textAdded",
+        script_dir / "ChatTTS-UI-0.84" / "static" / "wavs"
     ]
     
     # 清理每个目录

@@ -1,8 +1,6 @@
 import subprocess
-import os
 import time  # 导入time模块
 from pathlib import Path
-import psutil  # 导入psutil库用于更精确地关闭进程
 
 # 调用清理脚本 - 运行前
 print("运行前清理文件...")
