@@ -7,10 +7,10 @@ import random
 
 def add_text_from_txt_to_image(image_path, txt_path, output_path, 
                               font_path="simhei.ttf",
-                              font_size=97,  # 放大到原来的3倍 (24*3)
+                              font_size=87,  # 放大到原来的3倍 (24*3)
                               text_color=(255, 215, 0),  # 改为黄色
                               bg_color=(100, 149, 237),  # 半透明蓝色背景 (R, G, B, Alpha)
-                              line_spacing=30,  # 行间距也相应放大3倍 (30*3)
+                              line_spacing=29,  # 行间距也相应放大3倍 (30*3)
                               start_x=50,
                               start_y=150,  # 增加上边距给更大的日期
                               max_width=None):

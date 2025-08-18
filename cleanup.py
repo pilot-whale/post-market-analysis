@@ -29,6 +29,7 @@ def main():
     directories = [
         script_dir / "audio",
         script_dir / "text" / "subtitle",
+        script_dir / "text" / "target",
         script_dir / "video",
         script_dir / "picture" / "textAdded"
     ]

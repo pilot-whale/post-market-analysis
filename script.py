@@ -22,11 +22,12 @@ script_dir = Path(__file__).parent
 
 # 定义相对路径
 app_path = script_dir / "ChatTTS-UI-0.84" / "app.exe"
+email_path = script_dir / "read_email" / "read_email.py"
 asker_path = script_dir / "ChatTTS-asker" / "getAudioByTarget.py"
 addText_path = script_dir / "add-text" / "addText.py"
 videoGenerate_path = script_dir / "video-processor" / "video-generator.py"
 videoConnect_path = script_dir / "video-processor" / "video-connecter.py"
-# upload_path = script_dir / "social-auto-upload" / "upload_video_to_douyin.py"
+upload_path = script_dir / "social-auto-upload" / "upload_video_to_douyin.py"
 
 try:
     # 启动app.exe
@@ -38,6 +39,8 @@ try:
     time.sleep(60)  # 等待10秒，可以根据实际情况调整
 
     # 运行Python脚本 - 确保在 Conda 环境 chatTTS 中运行
+    print(f"正在运行: {email_path}")
+    subprocess.run(["conda", "run", "-n", "chatTTS", "python", str(email_path)], check=True)
     print(f"正在运行: {asker_path}")
     subprocess.run(["conda", "run", "-n", "chatTTS", "python", str(asker_path)], check=True)
     print(f"正在运行: {addText_path}")
@@ -46,8 +49,8 @@ try:
     subprocess.run(["conda", "run", "-n", "chatTTS", "python", str(videoGenerate_path)], check=True)
     print(f"正在运行: {videoConnect_path}")
     subprocess.run(["conda", "run", "-n", "chatTTS", "python", str(videoConnect_path)], check=True)
-    # print(f"正在运行: {upload_path}")
-    # subprocess.run(["conda", "run", "-n", "chatTTS", "python", str(upload_path)], check=True)
+    print(f"正在运行: {upload_path}")
+    subprocess.run(["conda", "run", "-n", "chatTTS", "python", str(upload_path)], check=True)
     
     print("Python脚本执行完毕，准备关闭app.exe...")
     
