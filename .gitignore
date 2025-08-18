@@ -60,3 +60,7 @@ pytestdebug.log
 *.png
 *.jpg
 *.jpeg
+
+# 敏感信息
+read_email.py
+
