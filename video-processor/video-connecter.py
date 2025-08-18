@@ -1,5 +1,6 @@
 import os
 import sys
+import re  # 添加正则表达式模块导入
 from moviepy import VideoFileClip, concatenate_videoclips
 from tqdm import tqdm
 
@@ -12,9 +13,13 @@ output_file_remote = os.path.join(video_remote_dir, 'latest.mp4')
 # 获取视频目录中的所有mp4文件
 video_files = [f for f in os.listdir(video_local_dir) if f.endswith('.mp4')]
 
+# 定义自然排序函数
+def natural_sort_key(s):
+    # 提取字符串中的数字部分，并转换为整数进行排序
+    return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)]
 
-# 按照文件名排序
-video_files.sort()
+# 使用自然排序而不是默认字符串排序
+video_files.sort(key=natural_sort_key)
 
 # 检查是否有视频文件
 if not video_files:
