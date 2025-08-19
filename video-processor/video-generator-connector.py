@@ -39,10 +39,8 @@ def process_and_connect_media():
     base_dir = os.path.dirname(__file__)
     image_dir = os.path.abspath(os.path.join(base_dir, '..', 'picture', 'textAdded'))
     audio_dir = os.path.abspath(os.path.join(base_dir, '..', 'audio'))
-    video_dir = os.path.abspath(os.path.join(base_dir, '..', 'video'))
     video_remote_dir = os.path.abspath(os.path.join(base_dir, '..', 'social-auto-upload/videos'))
 
-    os.makedirs(video_dir, exist_ok=True)
     os.makedirs(video_remote_dir, exist_ok=True)
 
     # 获取文件
@@ -95,21 +93,9 @@ def process_and_connect_media():
         final_clip = concatenate_videoclips(sorted_clips)
 
         # 保存拼接后的视频
-        output_file_local = os.path.join(video_dir, 'latest.mp4')
         output_file_remote = os.path.join(video_remote_dir, 'latest.mp4')
 
         try:
-            # 优化编码参数
-            final_clip.write_videofile(
-                output_file_local,
-                codec='libx264',
-                audio_codec='aac',
-                threads=MAX_WORKERS,
-                preset='fast',
-                ffmpeg_params=['-movflags', '+faststart']
-            )
-            print(f"视频已成功拼接并保存为: {output_file_local}")
-
             # 保存到远程目录
             final_clip.write_videofile(
                 output_file_remote,

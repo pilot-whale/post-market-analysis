@@ -30,8 +30,7 @@ def main():
         script_dir / "text" / "subtitle",
         script_dir / "text" / "target",
         script_dir / "video",
-        script_dir / "picture" / "textAdded",
-        script_dir / "ChatTTS-UI-0.84" / "static" / "wavs"
+        script_dir / "picture" / "textAdded"
     ]
     
     # 清理每个目录

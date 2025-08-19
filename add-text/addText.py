@@ -4,173 +4,160 @@ import cv2
 import time
 import os
 import random
-import concurrent.futures
-from typing import List, Tuple, Dict
-from dataclasses import dataclass
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
-@dataclass
-class TextImageTask:
-    image_path: str
-    txt_path: str
-    output_path: str
-    font_path: str
-    font_size: int = 87
-    text_color: Tuple[int, int, int] = (255, 215, 0)
-    bg_color: Tuple[int, int, int, int] = (100, 149, 237, 180)
-    line_spacing: int = 29
-    start_x: int = 50
-    start_y: int = 150
-    max_width: int = None
-
-def add_text_to_image(task: TextImageTask) -> None:
+def add_text_from_txt_to_image(image_path, txt_path, output_path, 
+                              font_path="simhei.ttf",
+                              font_size=87,
+                              text_color=(255, 215, 0),
+                              bg_color=(100, 149, 237),
+                              line_spacing=29,
+                              start_x=50,
+                              start_y=150,
+                              max_width=None):
     """
-    优化版：将文字添加到图片上（单任务处理函数）
+    改进版：从TXT文件读取多行文字并添加到图片上，支持自动换行
+    
+    参数:
+        image_path: 原始图片路径
+        txt_path: 包含文字的TXT文件路径
+        output_path: 输出图片路径
+        font_path: 中文字体路径
+        font_size: 字体大小
+        text_color: 文字颜色
+        bg_color: 背景颜色 (包含alpha通道，0-255，0表示完全透明，255表示完全不透明)
+        line_spacing: 行间距
+        start_x: 起始x坐标
+        start_y: 起始y坐标
+        max_width: 文本最大宽度(像素)，None则自动使用图片宽度减去start_x
     """
     try:
-        # 读取图片并直接转换为RGBA模式
-        image = cv2.imread(task.image_path, cv2.IMREAD_UNCHANGED)
+        # 读取图片
+        image = cv2.imread(image_path)
         if image is None:
-            print(f"无法加载图片: {task.image_path}")
-            return
+            print(f"错误: 无法加载图片 {image_path}")
+            return False
         
-        if len(image.shape) == 2:  # 灰度图
-            image_pil = Image.fromarray(image).convert('RGBA')
-        elif image.shape[2] == 3:  # RGB
-            image_pil = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB)).convert('RGBA')
-        else:  # RGBA或其他
-            image_pil = Image.fromarray(image)
-
+        # 转换为RGB，然后再转换为RGBA以支持透明度
+        image_pil = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB)).convert('RGBA')
         draw = ImageDraw.Draw(image_pil)
         
-        # 预加载字体
-        try:
-            date_font = ImageFont.truetype(task.font_path, 60)
-            main_font = ImageFont.truetype(task.font_path, task.font_size)
-        except IOError:
-            print(f"警告: 字体加载失败，使用默认字体: {task.font_path}")
-            date_font = ImageFont.load_default()
-            main_font = ImageFont.load_default()
-        
-        # 添加当前日期
+        # 添加当前年月日（黄底黑字）
         current_date = time.strftime('%Y-%m-%d')
+        try:
+            date_font = ImageFont.truetype(font_path, 60)
+        except IOError:
+            date_font = ImageFont.load_default()
+        
+        # 计算日期文本的边界框
         date_bbox = draw.textbbox((0, 0), current_date, font=date_font)
         date_width = date_bbox[2] - date_bbox[0] + 30
         date_height = date_bbox[3] - date_bbox[1] + 30
         
-        # 绘制日期背景和文字
-        draw.rounded_rectangle([(10, 10), (10 + date_width, 10 + date_height)], 
-                             radius=15, fill=(255, 215, 0, 255))
+        # 绘制黄色背景 (日期背景保持不透明)
+        draw.rounded_rectangle([(10, 10), (10 + date_width, 10 + date_height)], radius=15, fill=(255, 215, 0, 255))
+        
+        # 绘制黑色日期文字
         draw.text((20, 15), current_date, font=date_font, fill=(0, 0, 0))
         
-        # 读取并处理文本
-        try:
-            with open(task.txt_path, 'r', encoding='utf-8') as f:
-                lines = [line.strip() for line in f if line.strip()]
-        except Exception as e:
-            print(f"无法读取文本文件 {task.txt_path}: {str(e)}")
-            return
-
+        # 读取TXT文件内容
+        with open(txt_path, 'r', encoding='utf-8') as f:
+            lines = [line.strip() for line in f.readlines() if line.strip()]
+        
         if not lines:
-            print(f"警告: TXT文件为空: {task.txt_path}")
-            return
+            print(f"警告: TXT文件 {txt_path} 为空或没有有效内容")
+            return False
+        
+        # 加载字体
+        try:
+            font = ImageFont.truetype(font_path, font_size)
+        except IOError:
+            print(f"警告: 找不到字体文件 {font_path}，尝试使用默认字体")
+            font = ImageFont.load_default()
         
         # 设置最大宽度
-        max_width = task.max_width if task.max_width is not None else image_pil.width - task.start_x * 2
+        if max_width is None:
+            max_width = image_pil.width - start_x * 2
         
-        x, y = task.start_x, task.start_y
-        char_width_cache: Dict[str, float] = {}  # 字符宽度缓存
+        x, y = start_x, start_y
         
         for line in lines:
             if not line:
                 continue
                 
+            # 自动换行处理
+            words = list(line)
             current_line = []
-            current_line_width = 0
             
-            for char in line:
-                # 使用缓存获取字符宽度
-                if char not in char_width_cache:
-                    char_width = draw.textlength(char, font=main_font)
-                    char_width_cache[char] = char_width
+            for word in words:
+                test_line = ''.join(current_line + [word])
+                bbox = draw.textbbox((x, y), test_line, font=font)
+                text_width = bbox[2] - bbox[0]
                 
-                char_width = char_width_cache[char]
-                
-                if current_line_width + char_width <= max_width:
-                    current_line.append(char)
-                    current_line_width += char_width
+                if text_width <= max_width:
+                    current_line.append(word)
                 else:
-                    # 绘制当前行
                     if current_line:
-                        _draw_text_line(draw, ''.join(current_line), x, y, main_font, task.text_color, task.bg_color)
-                        y += _get_text_height(''.join(current_line), main_font) + task.line_spacing
+                        line_text = ''.join(current_line)
+                        line_bbox = draw.textbbox((x, y), line_text, font=font)
+                        line_width = line_bbox[2] - line_bbox[0] + 30
+                        line_height = line_bbox[3] - line_bbox[1] + 30
+                        
+                        draw.rounded_rectangle([(x - 10, y - 10), (x + line_width - 10, y + line_height - 10)], radius=10, fill=bg_color)
+                        draw.text((x, y), line_text, font=font, fill=text_color)
+                        y += line_height + line_spacing
                     
-                    # 开始新行
-                    current_line = [char]
-                    current_line_width = char_width
+                    current_line = [word]
             
-            # 绘制剩余文字
             if current_line:
-                _draw_text_line(draw, ''.join(current_line), x, y, main_font, task.text_color, task.bg_color)
-                y += _get_text_height(''.join(current_line), main_font) + task.line_spacing
+                line_text = ''.join(current_line)
+                line_bbox = draw.textbbox((x, y), line_text, font=font)
+                line_width = line_bbox[2] - line_bbox[0] + 20
+                line_height = line_bbox[3] - line_bbox[1] + 15
+                
+                draw.rounded_rectangle([(x - 10, y - 10), (x + line_width - 10, y + line_height - 10)], radius=10, fill=bg_color)
+                draw.text((x, y), line_text, font=font, fill=text_color)
+                y += line_height + line_spacing
         
         # 保存结果
-        try:
-            if task.output_path.lower().endswith('.png'):
-                image_pil.save(task.output_path, optimize=True, compress_level=6)
-            else:
-                image_pil.convert('RGB').save(task.output_path, quality=85)
-            print(f"处理完成: {task.output_path}")
-        except Exception as e:
-            print(f"保存图片失败 {task.output_path}: {str(e)}")
-
+        result_image = cv2.cvtColor(np.array(image_pil.convert('RGB')), cv2.COLOR_RGB2BGR)
+        cv2.imwrite(output_path, result_image)
+        print(f"处理完成: {output_path}")
+        return True
     except Exception as e:
-        print(f"处理图片 {task.image_path} 和文本 {task.txt_path} 时发生错误: {str(e)}")
+        print(f"处理 {txt_path} 和 {image_path} 时出错: {str(e)}")
+        return False
 
-def _draw_text_line(
-    draw: ImageDraw.Draw,
-    text: str,
-    x: int,
-    y: int,
-    font: ImageFont.FreeTypeFont,
-    text_color: Tuple[int, int, int],
-    bg_color: Tuple[int, int, int, int]
-) -> None:
-    """绘制单行文本及其背景"""
-    bbox = draw.textbbox((x, y), text, font=font)
-    padding = 15
-    bg_box = (
-        bbox[0] - padding,
-        bbox[1] - padding,
-        bbox[2] + padding,
-        bbox[3] + padding
+def process_single_file(txt_file, image_files, subtitle_dir, resized_dir, output_dir, font_path):
+    """处理单个文本文件"""
+    # 为当前txt文件随机选择一张图片
+    image_file = random.choice(image_files)
+    
+    # 构建完整路径
+    txt_path = os.path.join(subtitle_dir, txt_file)
+    image_path = os.path.join(resized_dir, image_file)
+    
+    # 生成输出文件名（与txt文件名一致）
+    txt_name = os.path.splitext(txt_file)[0]
+    output_filename = f"{txt_name}.png"
+    output_path = os.path.join(output_dir, output_filename)
+    
+    # 调用函数添加文字到图片
+    return add_text_from_txt_to_image(
+        image_path=image_path,
+        txt_path=txt_path,
+        output_path=output_path,
+        font_path=font_path
     )
-    
-    # 创建背景层
-    bg_layer = Image.new('RGBA', (bg_box[2] - bg_box[0], bg_box[3] - bg_box[1]), bg_color)
-    mask = Image.new('L', bg_layer.size, 0)
-    mask_draw = ImageDraw.Draw(mask)
-    mask_draw.rounded_rectangle([(0, 0), bg_layer.size], radius=10, fill=255)
-    
-    # 合成背景
-    draw.bitmap((bg_box[0], bg_box[1]), bg_layer, mask=mask)
-    
-    # 绘制文字
-    draw.text((x, y), text, font=font, fill=text_color)
 
-def _get_text_height(text: str, font: ImageFont.FreeTypeFont) -> int:
-    """获取文本高度"""
-    temp_img = Image.new('RGB', (1, 1))
-    temp_draw = ImageDraw.Draw(temp_img)
-    bbox = temp_draw.textbbox((0, 0), text, font=font)
-    return bbox[3] - bbox[1]
-
-def generate_text_images_multithread(max_workers: int = None) -> None:
+def generate_text_image_multithreaded(max_workers=4):
     """
-    多线程版：从subtitle中读取所有txt内容，从picture/resized中为每个txt文件随机选择背景图片，
+    使用多线程从subtitle中读取所有txt内容，从picture/resized中为每个txt文件随机选择背景图片，
     添加文字和日期后保存到picture/textAdded
     
     参数:
-        max_workers: 线程池最大工作线程数，None则自动根据CPU核心数决定
+        max_workers: 最大线程数
     """
     # 设置路径
     subtitle_dir = "./text/subtitle"
@@ -178,71 +165,62 @@ def generate_text_images_multithread(max_workers: int = None) -> None:
     output_dir = "./picture/textAdded"
     font_path = "simhei.ttf"
     
-    # 确保目录存在
+    # 确保输出目录存在
     os.makedirs(output_dir, exist_ok=True)
     
-    try:
-        # 获取文件列表
-        txt_files = [f for f in os.listdir(subtitle_dir) if f.lower().endswith('.txt')]
-        if not txt_files:
-            print("错误: subtitle目录中没有找到txt文件")
-            return
-        
-        image_extensions = ('.jpg', '.jpeg', '.png', '.bmp', '.gif')
-        image_files = [f for f in os.listdir(resized_dir) 
-                      if f.lower().endswith(image_extensions)]
-        if not image_files:
-            print("错误: resized目录中没有找到图片文件")
-            return
-        
-        # 准备任务列表
-        tasks = []
+    # 获取subtitle目录中的所有txt文件
+    txt_files = [f for f in os.listdir(subtitle_dir) if f.lower().endswith('.txt')]
+    if not txt_files:
+        print("错误: subtitle目录中没有找到txt文件")
+        return
+    
+    # 获取resized目录中的所有图片文件
+    image_extensions = ['.jpg', '.jpeg', '.png', '.bmp', '.gif']
+    image_files = [f for f in os.listdir(resized_dir) if any(f.lower().endswith(ext) for ext in image_extensions)]
+    if not image_files:
+        print("错误: resized目录中没有找到图片文件")
+        return
+    
+    # 使用线程池处理文件
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # 为每个txt文件创建一个任务
+        futures = []
         for txt_file in txt_files:
-            txt_path = os.path.join(subtitle_dir, txt_file)
-            image_path = os.path.join(resized_dir, random.choice(image_files))
-            output_name = os.path.splitext(txt_file)[0] + '.png'
-            output_path = os.path.join(output_dir, output_name)
-            
-            tasks.append(TextImageTask(
-                image_path=image_path,
-                txt_path=txt_path,
-                output_path=output_path,
+            future = executor.submit(
+                process_single_file,
+                txt_file=txt_file,
+                image_files=image_files,
+                subtitle_dir=subtitle_dir,
+                resized_dir=resized_dir,
+                output_dir=output_dir,
                 font_path=font_path
-            ))
+            )
+            futures.append(future)
         
-        # 使用线程池处理任务
-        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-            # 提交所有任务
-            futures = [executor.submit(add_text_to_image, task) for task in tasks]
-            
-            # 等待所有任务完成并处理异常
-            for future in concurrent.futures.as_completed(futures):
-                try:
-                    future.result()  # 获取结果（如果有异常会在这里抛出）
-                except Exception as e:
-                    print(f"任务执行出错: {str(e)}")
-        
-        print("所有任务处理完成")
-        
-    except Exception as e:
-        print(f"程序运行出错: {str(e)}")
+        # 等待所有任务完成
+        success_count = 0
+        for future in futures:
+            try:
+                if future.result():
+                    success_count += 1
+            except Exception as e:
+                print(f"处理任务时出错: {str(e)}")
+    
+    print(f"\n处理完成! 成功处理 {success_count}/{len(txt_files)} 个文件")
 
 if __name__ == "__main__":
-    # 检查目录
+    # 检查subtitle和resized目录是否存在
     subtitle_dir = "./text/subtitle"
     resized_dir = "./picture/resized"
     
     if not os.path.exists(subtitle_dir):
         os.makedirs(subtitle_dir, exist_ok=True)
-        print(f"警告: 创建了subtitle目录: {subtitle_dir}")
+        print(f"警告: subtitle目录不存在，已自动创建: {subtitle_dir}")
+        print("请在该目录下添加txt文件后再运行程序")
     elif not os.path.exists(resized_dir):
         os.makedirs(resized_dir, exist_ok=True)
-        print(f"警告: 创建了resized目录: {resized_dir}")
+        print(f"警告: resized目录不存在，已自动创建: {resized_dir}")
+        print("请在该目录下添加图片文件后再运行程序")
     else:
-        # 获取CPU核心数作为默认线程数
-        cpu_count = os.cpu_count() or 4
-        # 使用CPU核心数的2倍作为线程数（I/O密集型任务）
-        max_workers = min(cpu_count * 2, 32)  # 不超过32个线程
-        
-        print(f"使用 {max_workers} 个线程处理任务...")
-        generate_text_images_multithread(max_workers=max_workers)
+        # 运行多线程生成函数
+        generate_text_image_multithreaded(max_workers=4)  # 可以根据CPU核心数调整线程数
