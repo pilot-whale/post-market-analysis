@@ -2,7 +2,6 @@ import os
 import sys
 import re  # 添加正则表达式模块导入
 from moviepy import VideoFileClip, concatenate_videoclips
-from tqdm import tqdm
 
 # 设置视频目录路径
 video_local_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'video')
