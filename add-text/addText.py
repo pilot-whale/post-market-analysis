@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 def add_text_from_txt_to_image(image_path, txt_path, output_path, 
                               font_path="simhei.ttf",
                               font_size=87,
-                              text_color=(255, 215, 0),
+                              text_color=(255, 255, 0),
                               bg_color=(100, 149, 237),
                               line_spacing=29,
                               start_x=50,
