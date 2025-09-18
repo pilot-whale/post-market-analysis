@@ -3,7 +3,7 @@ import shutil
 from pathlib import Path
 
 def clean_directory(path):
-    """删除指定目录中的所有文件和子目录，但保留目录本身"""
+    """删除指定目录中的所有文件及子目录，但保留目录本身"""
     if not os.path.exists(path):
         print(f"目录 {path} 不存在")
         return
